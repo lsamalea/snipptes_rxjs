@@ -64,11 +64,12 @@ setTimeout( function(){
   repository.submitQuery("Employer");  
 }, 1000);
 
+var subscription2 = null;
 
 setTimeout( function(){
   console.log("observer2 is going to subscribe");
   
-  repository.getObservable("Employer").subscribe(
+  subscription2 = repository.getObservable("Employer").subscribe(
     function (x) {         
         console.table('observer2: state: '+x.state+', data: ' + x.data);
     },
@@ -84,3 +85,9 @@ setTimeout( function(){
 setTimeout( function(){
   repository.submitQuery("Employer");  
 }, 5000);
+
+setTimeout( function(){
+  subscription2.dispose();
+  repository.submitQuery("Employer");  
+}, 7000);
+
