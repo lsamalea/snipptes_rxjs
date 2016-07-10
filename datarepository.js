@@ -1,7 +1,8 @@
+/// <reference path="typings/rx/rx.d.ts" />
 
-var NO_DATA = "NO_DATA";
-var NEW_SUBMIT = "NEW_SUBMIT";
-var DATA = "DATA";
+var DATASTATE_NO_DATA = "NO_DATA";
+var DATASTATE_HTTP_REQUEST = "HTTP_REQUEST";
+var DATASTATE_DATA = "DATA";
 
 function RepositoryData(state, data){
   this.state = state;
@@ -9,22 +10,15 @@ function RepositoryData(state, data){
 }
 
 function Repository(){
-  var subjects = {};
-  var i = 0;
-  function submitQuery(type){  
-//     debugger;
-    getObservable(type).onNext(new RepositoryData(NEW_SUBMIT, null));
-    return setTimeout( function(){
-       getObservable(type).onNext( new RepositoryData(DATA, i++));
-    }, 1000);
-  }
+  var observables = {};
   
   function getObservable(type){
 //     debugger;
-    if(!subjects[type]){
-      subjects[type] = new Rx.BehaviorSubject( new RepositoryData(NO_DATA, null));
+    if(!observables[type]){
+      var subject = new Rx.BehaviorSubject( new RepositoryData(DATASTATE_NO_DATA, null));
+      observables[type] = subject.asObservable();
     }    
-    return subjects[type];    
+    return observables[type];    
   }
   
   function getData(type){
@@ -34,60 +28,45 @@ function Repository(){
   function getState(type){
     return getObservable(type).next().state;    
   }
+
+  function setData(type, data){
+    getObservable(type).source.onNext( new RepositoryData(DATASTATE_DATA, data));    
+  }
+
+  function subscribe(type, observer){
+      return getObservable(type).subscribe(observer);
+  }
+
+ function httpRequest(httpconfig){
+    
+    setData(new RepositoryData(DATASTATE_HTTP_REQUEST, ''));
+
+    httpconfig.url = resolveUrl(httpconfig.url);
+
+    return new Rx.Observable.create(function(observer){
+            var interval = setTimeout(function(){
+                observer.onNext("server response data for :" + httpconfig.url);
+                observer.onCompleted();
+            },1000);
+
+            return {
+                dispose: function(){
+                    clearTimeout(interval);
+                }    
+            };
+    });
+}
+
   
   return {
     
     getState: getState,
     getData:  getData,
-    getObservable: getObservable,
-    submitQuery: submitQuery
+    setData:  setData,
+    getObservable: getObservable ,
+    subscribe: subscribe,
+    httpRequest: httpRequest   
   };
 }
 
-var repository = new Repository();
-
-repository.getObservable("Employer").subscribe(
-    function (x) {         
-        console.table('observer1: state: '+x.state+', data: ' + x.data);
-    },
-    function (err) {
-        console.log('Error: ' + err);
-    },
-    function () {
-        console.log('Completed');
-    });
-
-
-repository.submitQuery("Employer");
-
-setTimeout( function(){
-  repository.submitQuery("Employer");  
-}, 1000);
-
-var subscription2 = null;
-
-setTimeout( function(){
-  console.log("observer2 is going to subscribe");
-  
-  subscription2 = repository.getObservable("Employer").subscribe(
-    function (x) {         
-        console.table('observer2: state: '+x.state+', data: ' + x.data);
-    },
-    function (err) {
-        console.log('Error: ' + err);
-    },
-    function () {
-        console.log('Completed');
-    });
-  
-}, 4000);
-
-setTimeout( function(){
-  repository.submitQuery("Employer");  
-}, 5000);
-
-setTimeout( function(){
-  subscription2.dispose();
-  repository.submitQuery("Employer");  
-}, 7000);
 
