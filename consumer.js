@@ -31,21 +31,30 @@ $(function(){
         // do http request      
         
         var observable = repository.httpRequest({ url: webendpoint});
-        return observable.retry(3)
+        return observable
+                 .retry(3)
+                //  .catch(function(){
+                //      return Rx.Observable.just(null)
+                //   });
     })
     .switchLatest();
 
-
-    var subscription = httpObservable.subscribe(
-        function (x) {         
+    var observer = {
+        onNext: function (x) { 
             repository.setData(webendpoint, x);
         },
-        function (err) {
-            console.log('Error: ' + err);
+        onError: function (err) {
+            repository.setDataErr(webendpoint, err);
+
+            // re-subscribe
+            subscription = httpObservable.subscribe(observer);
         },
-        function () {
+        onComplete: function () {
             console.log('Completed');
-        });
+        }
+    };
+
+    var subscription = httpObservable.subscribe(observer);
 
 
 

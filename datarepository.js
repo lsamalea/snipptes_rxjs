@@ -3,6 +3,7 @@
 var DATASTATE_NO_DATA = "NO_DATA";
 var DATASTATE_HTTP_REQUEST = "HTTP_REQUEST";
 var DATASTATE_DATA = "DATA";
+var DATASTATE_ERROR = "ERROR";
 
 function RepositoryData(state, data){
   this.state = state;
@@ -30,7 +31,16 @@ function Repository(){
   }
 
   function setData(type, data){
-    getObservable(type).source.onNext( new RepositoryData(DATASTATE_DATA, data));    
+    if(data){
+      getObservable(type).source.onNext( new RepositoryData(DATASTATE_DATA, data));
+    }else{
+      getObservable(type).source.onNext( new RepositoryData(DATASTATE_NO_DATA, data));
+    }
+        
+  }
+
+  function setDataErr(type, err){
+      getObservable(type).source.onNext( new RepositoryData(DATASTATE_ERROR, err));
   }
 
   function subscribe(type, observer){
@@ -45,8 +55,9 @@ function Repository(){
 
     return new Rx.Observable.create(function(observer){
             var interval = setTimeout(function(){
-                observer.onNext("server response data for :" + httpconfig.url);
-                observer.onCompleted();
+                observer.onError("Error: no server response data for :" + httpconfig.url);
+                //observer.onNext("server response data for :" + httpconfig.url);
+                //observer.onCompleted();
             },1000);
 
             return {
@@ -63,6 +74,7 @@ function Repository(){
     getState: getState,
     getData:  getData,
     setData:  setData,
+    setDataErr: setDataErr,
     getObservable: getObservable ,
     subscribe: subscribe,
     httpRequest: httpRequest   
